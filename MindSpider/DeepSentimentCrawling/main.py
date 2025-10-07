@@ -9,7 +9,7 @@ import sys
 import argparse
 from datetime import date, datetime
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent.parent
@@ -27,9 +27,9 @@ class DeepSentimentCrawling:
         self.platform_crawler = PlatformCrawler()
         self.supported_platforms = ['xhs', 'dy', 'ks', 'bili', 'wb', 'tieba', 'zhihu']
     
-    def run_daily_crawling(self, target_date: date = None, platforms: List[str] = None, 
-                          max_keywords_per_platform: int = 50, 
-                          max_notes_per_platform: int = 50,
+    def run_daily_crawling(self, target_date: Optional[date] = None, platforms: Optional[List[str]] = None, 
+                          max_keywords_per_platform: int = 20,  # 减少关键词数量
+                          max_notes_per_platform: int = 20,     # 减少笔记数量
                           login_type: str = "qrcode") -> Dict:
         """
         执行每日爬取任务
@@ -96,8 +96,8 @@ class DeepSentimentCrawling:
         
         return final_report
     
-    def run_platform_crawling(self, platform: str, target_date: date = None,
-                             max_keywords: int = 50, max_notes: int = 50,
+    def run_platform_crawling(self, platform: str, target_date: Optional[date] = None,
+                             max_keywords: int = 20, max_notes: int = 20,
                              login_type: str = "qrcode") -> Dict:
         """
         执行单个平台的爬取任务
@@ -142,7 +142,7 @@ class DeepSentimentCrawling:
         """列出最近可用的话题"""
         print(f"📋 最近 {days} 天的话题数据:")
         
-        recent_topics = self.keyword_manager.db_manager.get_recent_topics(days)
+        recent_topics = self.keyword_manager.get_recent_topics(days)
         
         if not recent_topics:
             print("   暂无话题数据")

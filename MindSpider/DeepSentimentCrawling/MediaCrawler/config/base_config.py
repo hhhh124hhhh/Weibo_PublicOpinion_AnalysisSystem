@@ -9,8 +9,8 @@
 # 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
 
 # 基础配置
-PLATFORM = "xhs"  # 平台，xhs | dy | ks | bili | wb | tieba | zhihu
-KEYWORDS = "黑神话钟馗,九三阅兵,种地吧,董璇,非亲生,医美风险,游戏科学,阅兵准备,热巴,醉驾判无罪"  # 关键词搜索配置，以英文逗号分隔
+PLATFORM = "zhihu"  # 平台，xhs | dy | ks | bili | wb | tieba | zhihu
+KEYWORDS = "中秋国庆假期,诺贝尔奖,小米17,固态锂电池,加沙医院"  # 关键词搜索配置，以英文逗号分隔
 LOGIN_TYPE = "qrcode"  # qrcode or phone or cookie
 COOKIES = ""
 CRAWLER_TYPE = "search"  # 爬取类型，search(关键词搜索) | detail(帖子详情)| creator(创作者主页数据)
@@ -101,10 +101,10 @@ CUSTOM_WORDS = {
 STOP_WORDS_FILE = "./docs/hit_stopwords.txt"
 
 # 中文字体文件路径
-FONT_PATH = "./docs/STZHONGS.TTF"
+FONT_PATH = "./docs/simhei.ttf"  # 使用系统默认字体或更简单的字体路径
 
 # 爬取间隔时间
-CRAWLER_MAX_SLEEP_SEC = 2
+CRAWLER_MAX_SLEEP_SEC = 5  # 增加到5秒以降低频率
 
 from .bilibili_config import *
 from .xhs_config import *

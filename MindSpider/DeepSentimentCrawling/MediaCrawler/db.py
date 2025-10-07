@@ -34,11 +34,11 @@ async def init_mediacrawler_db():
 
     """
     pool = await aiomysql.create_pool(
-        host=config.MYSQL_DB_HOST,
-        port=config.MYSQL_DB_PORT,
-        user=config.MYSQL_DB_USER,
-        password=config.MYSQL_DB_PWD,
-        db=config.MYSQL_DB_NAME,
+        host=getattr(config, 'MYSQL_DB_HOST', 'localhost'),
+        port=getattr(config, 'MYSQL_DB_PORT', 3306),
+        user=getattr(config, 'MYSQL_DB_USER', 'root'),
+        password=getattr(config, 'MYSQL_DB_PWD', ''),
+        db=getattr(config, 'MYSQL_DB_NAME', 'mediacrawler'),
         autocommit=True,
     )
     async_db_obj = AsyncMysqlDB(pool)
@@ -54,7 +54,8 @@ async def init_sqlite_db():
     Returns:
 
     """
-    async_db_obj = AsyncSqliteDB(config.SQLITE_DB_PATH)
+    sqlite_db_path = getattr(config, 'SQLITE_DB_PATH', 'schema/sqlite_tables.db')
+    async_db_obj = AsyncSqliteDB(sqlite_db_path)
     
     # 将SQLite数据库对象放到上下文变量中
     media_crawler_db_var.set(async_db_obj)
@@ -67,7 +68,8 @@ async def init_db():
 
     """
     utils.logger.info("[init_db] start init mediacrawler db connect object")
-    if config.SAVE_DATA_OPTION == "sqlite":
+    save_data_option = getattr(config, 'SAVE_DATA_OPTION', 'db')
+    if save_data_option == "sqlite":
         await init_sqlite_db()
         utils.logger.info("[init_db] end init sqlite db connect object")
     else:
@@ -81,19 +83,29 @@ async def close():
     Returns:
 
     """
-    utils.logger.info("[close] close mediacrawler db connection")
-    if config.SAVE_DATA_OPTION == "sqlite":
-        # SQLite数据库连接会在AsyncSqliteDB对象销毁时自动关闭
-        utils.logger.info("[close] sqlite db connection will be closed automatically")
-    else:
-        # MySQL连接池关闭
-        db_pool: aiomysql.Pool = db_conn_pool_var.get()
-        if db_pool is not None:
-            db_pool.close()
-            utils.logger.info("[close] mysql db pool closed")
+    try:
+        utils.logger.info("[close] close mediacrawler db connection")
+        save_data_option = getattr(config, 'SAVE_DATA_OPTION', 'db')
+        if save_data_option == "sqlite":
+            # SQLite数据库连接会在AsyncSqliteDB对象销毁时自动关闭
+            utils.logger.info("[close] sqlite db connection will be closed automatically")
+        else:
+            # MySQL连接池关闭
+            try:
+                db_pool = db_conn_pool_var.get()
+                if db_pool is not None:
+                    db_pool.close()
+                    utils.logger.info("[close] mysql db pool closed")
+            except LookupError:
+                # 如果上下文变量不存在，忽略错误
+                utils.logger.info("[close] mysql db pool context var not found, skipping close")
+                pass
+    except Exception as e:
+        utils.logger.error(f"[close] error while closing database connection: {e}")
+        pass
 
 
-async def init_table_schema(db_type: str = None):
+async def init_table_schema(db_type: str = ""):
     """
     用来初始化数据库表结构，请在第一次需要创建表结构的时候使用，多次执行该函数会将已有的表以及数据全部删除
     Args:
@@ -102,40 +114,46 @@ async def init_table_schema(db_type: str = None):
 
     """
     # 如果没有指定数据库类型，则使用配置文件中的设置
-    if db_type is None:
-        db_type = config.SAVE_DATA_OPTION
+    if db_type == "":
+        db_type = getattr(config, 'SAVE_DATA_OPTION', 'db')
     
     if db_type == "sqlite":
         utils.logger.info("[init_table_schema] begin init sqlite table schema ...")
         
         # 检查并删除可能存在的损坏数据库文件
         import os
-        if os.path.exists(config.SQLITE_DB_PATH):
+        sqlite_db_path = getattr(config, 'SQLITE_DB_PATH', 'schema/sqlite_tables.db')
+        if os.path.exists(sqlite_db_path):
             try:
                 # 尝试删除现有的数据库文件
-                os.remove(config.SQLITE_DB_PATH)
-                utils.logger.info(f"[init_table_schema] removed existing sqlite db file: {config.SQLITE_DB_PATH}")
+                os.remove(sqlite_db_path)
+                utils.logger.info(f"[init_table_schema] removed existing sqlite db file: {sqlite_db_path}")
             except Exception as e:
                 utils.logger.warning(f"[init_table_schema] failed to remove existing sqlite db file: {e}")
                 # 如果删除失败，尝试重命名文件
                 try:
-                    backup_path = f"{config.SQLITE_DB_PATH}.backup_{utils.get_current_timestamp()}"
-                    os.rename(config.SQLITE_DB_PATH, backup_path)
+                    backup_path = f"{sqlite_db_path}.backup_{utils.get_current_timestamp()}"
+                    os.rename(sqlite_db_path, backup_path)
                     utils.logger.info(f"[init_table_schema] renamed existing sqlite db file to: {backup_path}")
                 except Exception as rename_e:
                     utils.logger.error(f"[init_table_schema] failed to rename existing sqlite db file: {rename_e}")
                     raise rename_e
         
         await init_sqlite_db()
-        async_db_obj: AsyncSqliteDB = media_crawler_db_var.get()
+        async_db_obj = media_crawler_db_var.get()
         async with aiofiles.open("schema/sqlite_tables.sql", mode="r", encoding="utf-8") as f:
             schema_sql = await f.read()
-            await async_db_obj.executescript(schema_sql)
+            # 对于SQLite，我们需要逐行执行SQL语句
+            sql_statements = schema_sql.split(';')
+            for statement in sql_statements:
+                statement = statement.strip()
+                if statement:
+                    await async_db_obj.execute(statement)
             utils.logger.info("[init_table_schema] sqlite table schema init successful")
     elif db_type == "mysql":
         utils.logger.info("[init_table_schema] begin init mysql table schema ...")
         await init_mediacrawler_db()
-        async_db_obj: AsyncMysqlDB = media_crawler_db_var.get()
+        async_db_obj = media_crawler_db_var.get()
         async with aiofiles.open("schema/tables.sql", mode="r", encoding="utf-8") as f:
             schema_sql = await f.read()
             await async_db_obj.execute(schema_sql)
@@ -188,7 +206,8 @@ async def main():
                 print("👋 程序已退出")
                 break
             elif choice == 'config':
-                print(f"📋 使用配置文件中的设置: {config.SAVE_DATA_OPTION}")
+                save_data_option = getattr(config, 'SAVE_DATA_OPTION', 'db')
+                print(f"📋 使用配置文件中的设置: {save_data_option}")
                 await init_table_schema()
                 print("✅ 数据库表结构初始化完成！")
                 break

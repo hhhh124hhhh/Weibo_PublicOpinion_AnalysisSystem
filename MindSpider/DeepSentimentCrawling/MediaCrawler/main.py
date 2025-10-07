@@ -15,7 +15,6 @@ from typing import Optional
 
 import cmd_arg
 import config
-import db
 from base.base_crawler import AbstractCrawler
 from media_platform.bilibili import BilibiliCrawler
 from media_platform.douyin import DouYinCrawler
@@ -58,23 +57,50 @@ async def main():
     await cmd_arg.parse_cmd()
 
     # init db
-    if config.SAVE_DATA_OPTION in ["db", "sqlite"]:
+    if getattr(config, 'SAVE_DATA_OPTION', 'db') in ["db", "sqlite"]:
+        import db
         await db.init_db()
 
-    crawler = CrawlerFactory.create_crawler(platform=config.PLATFORM)
+    crawler = CrawlerFactory.create_crawler(platform=getattr(config, 'PLATFORM', 'wb'))
     await crawler.start()
 
 
 def cleanup():
+    global crawler
     if crawler:
         # asyncio.run(crawler.close())
         pass
-    if config.SAVE_DATA_OPTION in ["db", "sqlite"]:
-        asyncio.run(db.close())
-
+    try:
+        # 尝试安全地关闭数据库连接
+        if getattr(config, 'SAVE_DATA_OPTION', 'db') in ["db", "sqlite"]:
+            import db
+            try:
+                # 检查是否有运行中的事件循环
+                try:
+                    loop = asyncio.get_running_loop()
+                    # 在运行中的事件循环中，安排关闭任务
+                    loop.call_soon(db.close)
+                except RuntimeError:
+                    # 如果没有运行中的事件循环，使用asyncio.run
+                    asyncio.run(db.close())
+                except Exception:
+                    # 如果出现其他异常，忽略它以避免程序崩溃
+                    pass
+            except Exception as e:
+                # 如果出现其他异常，忽略它以避免程序崩溃
+                pass
+    except (ImportError, AttributeError):
+        # 如果出现导入或属性错误，忽略它以避免程序崩溃
+        pass
 
 if __name__ == "__main__":
     try:
         asyncio.get_event_loop().run_until_complete(main())
+    except KeyboardInterrupt:
+        print("用户中断操作")
     finally:
-        cleanup()
+        try:
+            cleanup()
+        except:
+            # 忽略清理过程中的任何异常
+            pass

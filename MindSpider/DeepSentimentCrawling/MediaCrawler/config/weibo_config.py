@@ -8,6 +8,11 @@
 # 详细许可条款请参阅项目根目录下的LICENSE文件。
 # 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
 
+# 微博平台特殊配置
+WEIBO_API_DELAY = 2  # API请求延迟（秒）
+WEIBO_MAX_RETRIES = 3  # 最大重试次数
+WEIBO_COMMENT_BATCH_SIZE = 10  # 评论批处理大小
+WEIBO_ENABLE_COMMENTS = False  # 暂时禁用评论爬取以避免被限制
 
 # 微博平台配置
 
