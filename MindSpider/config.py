@@ -4,12 +4,12 @@
 """
 
 # MySQL数据库配置
-DB_HOST = "your_host"
+DB_HOST = "localhost"
 DB_PORT = 3306
-DB_USER = "your_username"
-DB_PASSWORD = "your_password"
+DB_USER = "hwq"
+DB_PASSWORD = "hwq8391924"
 DB_NAME = "mindspider"
 DB_CHARSET = "utf8mb4"
 
 # DeepSeek API密钥
-DEEPSEEK_API_KEY = "your_deepseek_api_key"
+DEEPSEEK_API_KEY = "sk-1bb9d53baee3469cb12ff3256bba9221"

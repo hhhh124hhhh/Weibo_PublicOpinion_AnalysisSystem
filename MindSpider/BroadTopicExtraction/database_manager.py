@@ -9,7 +9,7 @@ import sys
 import json
 from datetime import datetime, date
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 import pymysql
 from pymysql.cursors import DictCursor
 
@@ -62,7 +62,7 @@ class DatabaseManager:
     
     # ==================== 新闻数据操作 ====================
     
-    def save_daily_news(self, news_data: List[Dict], crawl_date: date = None) -> int:
+    def save_daily_news(self, news_data: List[Dict], crawl_date: Optional[date] = None) -> int:
         """
         保存每日新闻数据，如果当天已有数据则覆盖
         
@@ -79,6 +79,9 @@ class DatabaseManager:
         current_timestamp = int(datetime.now().timestamp())
         
         try:
+            if not self.connection:
+                raise Exception("数据库连接未建立")
+                
             cursor = self.connection.cursor()
             
             # 先删除当天所有的新闻记录（覆盖模式）
@@ -98,8 +101,8 @@ class DatabaseManager:
                     insert_query = """
                         INSERT INTO daily_news (
                             news_id, source_platform, title, url, crawl_date, 
-                            rank_position, add_ts
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            rank_position, add_ts, last_modify_ts
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """
                     cursor.execute(insert_query, (
                         news_id,
@@ -108,6 +111,7 @@ class DatabaseManager:
                         news_item.get('url', ''),
                         crawl_date,
                         news_item.get('rank', None),
+                        current_timestamp,
                         current_timestamp
                     ))
                     saved_count += 1
@@ -123,7 +127,7 @@ class DatabaseManager:
             print(f"保存新闻数据失败: {e}")
             return 0
     
-    def get_daily_news(self, crawl_date: date = None) -> List[Dict]:
+    def get_daily_news(self, crawl_date: Optional[date] = None) -> List[Dict]:
         """
         获取每日新闻数据
         
@@ -142,13 +146,17 @@ class DatabaseManager:
             ORDER BY rank_position ASC
         """
         
+        if not self.connection:
+            raise Exception("数据库连接未建立")
+            
         cursor = self.connection.cursor()
         cursor.execute(query, (crawl_date,))
-        return cursor.fetchall()
+        results = cursor.fetchall()
+        return list(results)
     
     # ==================== 话题数据操作 ====================
     
-    def save_daily_topics(self, keywords: List[str], summary: str, extract_date: date = None) -> bool:
+    def save_daily_topics(self, keywords: List[str], summary: str, extract_date: Optional[date] = None) -> bool:
         """
         保存每日话题分析
         
@@ -165,7 +173,16 @@ class DatabaseManager:
         
         current_timestamp = int(datetime.now().timestamp())
         
+        # 生成话题ID
+        topic_id = f"topic_{extract_date.strftime('%Y%m%d')}"
+        
+        # 生成话题名称
+        topic_name = f"{extract_date.strftime('%Y年%m月%d日')}话题分析"
+        
         try:
+            if not self.connection:
+                raise Exception("数据库连接未建立")
+                
             cursor = self.connection.cursor()
             
             # 检查今天是否已有记录
@@ -179,18 +196,18 @@ class DatabaseManager:
                 # 更新现有记录
                 update_query = """
                     UPDATE daily_topics 
-                    SET keywords = %s, summary = %s, add_ts = %s
+                    SET topic_id = %s, topic_name = %s, keywords = %s, summary = %s, add_ts = %s, last_modify_ts = %s
                     WHERE extract_date = %s
                 """
-                cursor.execute(update_query, (keywords_json, summary, current_timestamp, extract_date))
+                cursor.execute(update_query, (topic_id, topic_name, keywords_json, summary, current_timestamp, current_timestamp, extract_date))
                 print(f"更新了 {extract_date} 的话题分析")
             else:
                 # 插入新记录
                 insert_query = """
-                    INSERT INTO daily_topics (extract_date, keywords, summary, add_ts)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO daily_topics (topic_id, topic_name, extract_date, keywords, summary, add_ts, last_modify_ts)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """
-                cursor.execute(insert_query, (extract_date, keywords_json, summary, current_timestamp))
+                cursor.execute(insert_query, (topic_id, topic_name, extract_date, keywords_json, summary, current_timestamp, current_timestamp))
                 print(f"保存了 {extract_date} 的话题分析")
             
             return True
@@ -199,7 +216,7 @@ class DatabaseManager:
             print(f"保存话题分析失败: {e}")
             return False
     
-    def get_daily_topics(self, extract_date: date = None) -> Optional[Dict]:
+    def get_daily_topics(self, extract_date: Optional[date] = None) -> Optional[Dict]:
         """
         获取每日话题分析
         
@@ -213,6 +230,9 @@ class DatabaseManager:
             extract_date = date.today()
         
         try:
+            if not self.connection:
+                raise Exception("数据库连接未建立")
+                
             cursor = self.connection.cursor()
             query = "SELECT * FROM daily_topics WHERE extract_date = %s"
             cursor.execute(query, (extract_date,))
@@ -221,7 +241,7 @@ class DatabaseManager:
             if result:
                 # 解析关键词JSON
                 result['keywords'] = json.loads(result['keywords'])
-                return result
+                return dict(result)
             else:
                 return None
                 
@@ -240,6 +260,9 @@ class DatabaseManager:
             话题分析列表
         """
         try:
+            if not self.connection:
+                raise Exception("数据库连接未建立")
+                
             cursor = self.connection.cursor()
             query = """
                 SELECT * FROM daily_topics 
@@ -250,10 +273,13 @@ class DatabaseManager:
             results = cursor.fetchall()
             
             # 解析每个结果的关键词JSON
+            parsed_results = []
             for result in results:
-                result['keywords'] = json.loads(result['keywords'])
+                result_dict = dict(result)
+                result_dict['keywords'] = json.loads(result_dict['keywords'])
+                parsed_results.append(result_dict)
             
-            return results
+            return parsed_results
             
         except Exception as e:
             print(f"获取最近话题分析失败: {e}")
@@ -264,6 +290,9 @@ class DatabaseManager:
     def get_summary_stats(self, days: int = 7) -> Dict:
         """获取统计摘要"""
         try:
+            if not self.connection:
+                raise Exception("数据库连接未建立")
+                
             cursor = self.connection.cursor()
             
             # 新闻统计
@@ -294,8 +323,8 @@ class DatabaseManager:
             topics_stats = cursor.fetchall()
             
             return {
-                'news_stats': news_stats,
-                'topics_stats': topics_stats
+                'news_stats': [dict(row) for row in news_stats],
+                'topics_stats': [dict(row) for row in topics_stats]
             }
             
         except Exception as e:

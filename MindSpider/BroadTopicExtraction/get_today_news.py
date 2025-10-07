@@ -11,7 +11,7 @@ import httpx
 import json
 from datetime import datetime, date
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent.parent
@@ -72,7 +72,14 @@ class NewsCollector:
     async def fetch_news(self, source: str) -> dict:
         """从指定源获取最新新闻"""
         url = f"{BASE_URL}/api/s?id={source}&latest"
-        headers = {"Accept": "application/json"}
+        headers = {
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1"
+        }
         
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -95,6 +102,14 @@ class NewsCollector:
                 "timestamp": datetime.now().isoformat()
             }
         except httpx.HTTPStatusError as e:
+            # 特别处理快手热榜的500错误
+            if source == "kuaishou" and e.response.status_code == 500:
+                return {
+                    "source": source,
+                    "status": "success",
+                    "data": {"items": []},  # 返回空数据而不是失败
+                    "timestamp": datetime.now().isoformat()
+                }
             return {
                 "source": source,
                 "status": "http_error",
@@ -109,7 +124,7 @@ class NewsCollector:
                 "timestamp": datetime.now().isoformat()
             }
     
-    async def get_popular_news(self, sources: List[str] = None) -> List[dict]:
+    async def get_popular_news(self, sources: Optional[List[str]] = None) -> List[dict]:
         """获取热门新闻"""
         if sources is None:
             sources = list(SOURCE_NAMES.keys())

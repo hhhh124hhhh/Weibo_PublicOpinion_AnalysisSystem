@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp remove:*)",
+      "Bash(claude mcp list:*)",
+      "Bash(@kazuph/mcp-fetch --help)",
+      "Bash(mcp-fetch:*)",
+      "Bash(timeout:*)",
+      "WebSearch"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

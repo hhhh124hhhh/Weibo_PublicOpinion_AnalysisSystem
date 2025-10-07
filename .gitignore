@@ -23,6 +23,7 @@ wheels/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
+WeiboOpinionAnalysisEnv/
 *.egg
 MANIFEST
 
@@ -218,6 +219,7 @@ checkpoints/
 *.json.gz
 *.jsonl
 *.parquet
+config.py
 
 # 数据集目录
 # data/
@@ -337,3 +339,9 @@ test_results/
 
 # Ai操作指引文件
 OperationGuidance/
+# Environment variables
+.env.local
+config.py
+MindSpider/config.py
+MindSpider/config.py
+MindSpider/config.py

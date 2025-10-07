@@ -13,6 +13,7 @@ from pathlib import Path
 import subprocess
 import pymysql
 from pymysql.cursors import DictCursor
+from typing import Optional
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent
@@ -176,7 +177,7 @@ class MindSpider:
         print("依赖环境检查通过")
         return True
     
-    def run_broad_topic_extraction(self, extract_date: date = None, keywords_count: int = 100) -> bool:
+    def run_broad_topic_extraction(self, extract_date: Optional[date] = None, keywords_count: int = 100) -> bool:
         """运行BroadTopicExtraction模块"""
         print(f"\n运行BroadTopicExtraction模块...")
         
@@ -186,7 +187,6 @@ class MindSpider:
         try:
             cmd = [
                 sys.executable, "main.py",
-                "--date", extract_date.strftime("%Y-%m-%d"),
                 "--keywords", str(keywords_count)
             ]
             
@@ -212,7 +212,7 @@ class MindSpider:
             print(f"BroadTopicExtraction模块执行异常: {e}")
             return False
     
-    def run_deep_sentiment_crawling(self, target_date: date = None, platforms: list = None,
+    def run_deep_sentiment_crawling(self, target_date: Optional[date] = None, platforms: Optional[list] = None,
                                    max_keywords: int = 50, max_notes: int = 50,
                                    test_mode: bool = False) -> bool:
         """运行DeepSentimentCrawling模块"""
@@ -260,7 +260,7 @@ class MindSpider:
             print(f"DeepSentimentCrawling模块执行异常: {e}")
             return False
     
-    def run_complete_workflow(self, target_date: date = None, platforms: list = None,
+    def run_complete_workflow(self, target_date: Optional[date] = None, platforms: Optional[list] = None,
                              keywords_count: int = 100, max_keywords: int = 50,
                              max_notes: int = 50, test_mode: bool = False) -> bool:
         """运行完整工作流程"""

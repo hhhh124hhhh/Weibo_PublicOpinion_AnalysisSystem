@@ -6,7 +6,7 @@
 import time
 import logging
 from functools import wraps
-from typing import Callable, Any, Union, List, Type
+from typing import Callable, Any, Union, List, Type, Optional
 import requests
 from openai import OpenAI
 
@@ -23,7 +23,7 @@ class RetryConfig:
         initial_delay: float = 1.0,
         backoff_factor: float = 2.0,
         max_delay: float = 60.0,
-        retry_on_exceptions: tuple = None
+        retry_on_exceptions: tuple = ()
     ):
         """
         初始化重试配置
@@ -41,7 +41,7 @@ class RetryConfig:
         self.max_delay = max_delay
         
         # 默认需要重试的异常类型
-        if retry_on_exceptions is None:
+        if not retry_on_exceptions:
             self.retry_on_exceptions = (
                 requests.exceptions.RequestException,
                 requests.exceptions.ConnectionError,
@@ -58,7 +58,7 @@ class RetryConfig:
 # 默认配置
 DEFAULT_RETRY_CONFIG = RetryConfig()
 
-def with_retry(config: RetryConfig = None):
+def with_retry(config: Optional[RetryConfig] = None):
     """
     重试装饰器
     
@@ -142,7 +142,7 @@ class RetryableError(Exception):
     """自定义的可重试异常"""
     pass
 
-def with_graceful_retry(config: RetryConfig = None, default_return=None):
+def with_graceful_retry(config: Optional[RetryConfig] = None, default_return=None):
     """
     优雅重试装饰器 - 用于非关键API调用
     失败后不会抛出异常，而是返回默认值，保证系统继续运行
@@ -230,10 +230,10 @@ def make_retryable_request(
 
 # 预定义一些常用的重试配置
 LLM_RETRY_CONFIG = RetryConfig(
-    max_retries=5,        # 增加到5次重试
-    initial_delay=3.0,    # 增加初始延迟到3秒
-    backoff_factor=1.8,   # 调整退避因子
-    max_delay=45.0        # 增加最大延迟
+    max_retries=6,        # 增加到6次重试
+    initial_delay=5.0,    # 增加初始延迟到5秒
+    backoff_factor=2.0,   # 调整退避因子
+    max_delay=60.0        # 增加最大延迟到60秒
 )
 
 SEARCH_API_RETRY_CONFIG = RetryConfig(

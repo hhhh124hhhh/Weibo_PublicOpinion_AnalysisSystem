@@ -40,6 +40,7 @@ CREATE TABLE `daily_topics` (
     `topic_name` varchar(255) NOT NULL COMMENT '话题名称',
     `topic_description` text COMMENT '话题描述',
     `keywords` text COMMENT '话题关键词(JSON格式存储)',
+    `summary` text COMMENT '话题总结',
     `extract_date` date NOT NULL COMMENT '话题提取日期',
     `relevance_score` float DEFAULT NULL COMMENT '话题相关性得分',
     `news_count` int DEFAULT 0 COMMENT '关联的新闻数量',

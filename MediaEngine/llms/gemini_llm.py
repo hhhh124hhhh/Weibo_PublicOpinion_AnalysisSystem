@@ -47,7 +47,7 @@ class GeminiLLM(BaseLLM):
         # 初始化OpenAI客户端，使用Gemini的中转endpoint
         self.client = OpenAI(
             api_key=self.api_key,
-            base_url="https://www.chataiapi.com/v1"
+            base_url="https://api.chataiapi.com/v1"  # 更换为更稳定的API端点
         )
         
         self.default_model = model_name or self.get_default_model()
